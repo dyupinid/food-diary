@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Дневник питания</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥗</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #faf8f5; --card: #ffffff; --border: #e8e2d9;
+  --text: #2d2418; --text2: #7a6e5d; --text3: #b0a48f;
+  --accent: #5b8a72; --accent-light: #e8f3ed; --accent-dark: #3d6b54;
+  --danger: #d94f4f; --danger-light: #fdf0f0;
+  --warn: #e8a838; --warn-light: #fef8ec;
+  --shadow: 0 1px 3px rgba(45,36,24,0.06), 0 4px 12px rgba(45,36,24,0.04);
+  --shadow-lg: 0 4px 16px rgba(45,36,24,0.08), 0 8px 32px rgba(45,36,24,0.04);
+  --radius: 14px; --radius-sm: 10px;
+}
+body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text); }
+.diary-app { max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 80px; }
+.card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-bottom: 12px; }
+.chip { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; border: 2px solid var(--border); background: var(--card); color: var(--text2); user-select: none; }
+.chip.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent-dark); }
+.chip:hover { border-color: var(--accent); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 20px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s; border: none; font-family: inherit; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent-dark); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text2); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-danger { background: var(--danger-light); color: var(--danger); border: none; }
+.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+.input { width: 100%; padding: 10px 14px; border: 2px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; background: var(--card); color: var(--text); transition: border-color .15s; outline: none; }
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: var(--text3); }
+textarea.input { resize: vertical; min-height: 70px; }
+.label { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; display: block; }
+.nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--card); border-top: 1px solid var(--border); display: flex; z-index: 100; box-shadow: 0 -2px 12px rgba(45,36,24,0.06); }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 8px 4px 10px; cursor: pointer; color: var(--text3); font-size: 10px; font-weight: 700; transition: color .15s; gap: 2px; }
+.nav-item.active { color: var(--accent); }
+.nav-icon { font-size: 20px; }
+.water-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; justify-items: center; }
+.water-btn { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; border: 2px solid #cce5f6; background: #f0f8ff; color: #3b8ccc; cursor: pointer; transition: all .15s; }
+.water-btn:hover { background: #dbeefe; border-color: #3b8ccc; }
+.fullness-track { width: 100%; height: 8px; border-radius: 4px; background: var(--border); position: relative; cursor: pointer; touch-action: none; }
+.fullness-fill { height: 100%; border-radius: 4px; transition: width .1s; }
+.fullness-thumb { width: 24px; height: 24px; border-radius: 50%; background: white; box-shadow: var(--shadow-lg); border: 3px solid var(--accent); position: absolute; top: 50%; transform: translate(-50%, -50%); cursor: grab; }
+.tag-freq { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; background: var(--accent-light); color: var(--accent-dark); }
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.stat-row:last-child { border-bottom: none; }
+.meal-card { position: relative; padding: 12px; border-radius: var(--radius-sm); background: var(--bg); margin-bottom: 8px; }
+.meal-card:last-child { margin-bottom: 0; }
+.fav-chip { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px dashed var(--warn); background: var(--warn-light); color: #8a6519; transition: all .15s; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fav-chip:hover { border-style: solid; background: #fdf0d0; }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text3); }
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.fade-in { animation: fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.week-select { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; scrollbar-width: none; }
+.week-select::-webkit-scrollbar { display: none; }
+.week-chip { white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; border: 2px solid var(--border); background: var(--card); color: var(--text2); transition: all .15s; flex-shrink: 0; }
+.week-chip.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent-dark); }
+.suggest-hint { font-size: 11px; color: var(--accent); background: var(--accent-light); padding: 4px 10px; border-radius: 8px; margin-top: 6px; display: inline-block; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+const PRODUCTS = ["Овощи", "Фрукты", "Белок", "Крупы", "Выпечка", "Молочное", "Сладкое"];
+const EMOTIONS = [
+  { value: "Положительная", emoji: "😊", color: "#4ade80" },
+  { value: "Нейтральная", emoji: "😐", color: "#fbbf24" },
+  { value: "Негативная", emoji: "😔", color: "#f87171" },
+];
+const COOKING = ["Жарка", "Запекание", "Варка", "Без обработки"];
+const SPEEDS = [
+  { value: "М", label: "Медленно", color: "#4ade80" },
+  { value: "С", label: "Средне", color: "#fbbf24" },
+  { value: "Б", label: "Быстро", color: "#f87171" },
+];
+const WATER_AMOUNTS = [200, 300, 400, 500];
+const STORAGE_KEY = "food_diary_data";
+
+const PRODUCT_KEYWORDS = {
+  "Белок": ["курица","куриц","мясо","мясн","говядин","свинин","индейк","рыб","минтай","скумбри","яйц","омлет","белк","тофу","сырник","сосис","бекон","нагетс","купат","фасоль","шпрот","бургер","голен","гуляш","додстер"],
+  "Овощи": ["овощ","помидор","томат","огурц","морков","свекл","капуст","салат","зелен","перец","баклажан","шпинат","тыкв","картоф","винегрет","лук"],
+  "Крупы": ["каша","гречк","пшен","гранол","крупа","рис ","овсян","дружб"],
+  "Фрукты": ["фрукт","банан","ягод","малин","клубник","мандарин","яблок","киви","черешн","замороженн"],
+  "Выпечка": ["хлеб","макарон","тортиль","пицц","булк","выпечк","зернов"],
+  "Молочное": ["сыр","молок","моцарелл","творог","лактоз"],
+  "Сладкое": ["сладк","джем","десерт","конфет","шоколад","торт","печень"],
+};
+
+const emptyForm = () => ({ description: "", products: [], cookingMethod: "", emotion: "", gadget: false, amount: "", speed: "", fullness: 7, comments: "", water: 0 });
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const getToday = () => new Date().toISOString().slice(0, 10);
+const getNowTime = () => { const d = new Date(); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
+const fmtDate = (s) => { if (!s) return ""; const [y,m,d] = s.split("-"); return `${d}.${m}.${y}`; };
+const fmtDateShort = (s) => { if (!s) return ""; const [,m,d] = s.split("-"); return `${d}.${m}`; };
+const dayName = (s) => { try { return new Date(s).toLocaleDateString("ru-RU", { weekday: "short" }); } catch { return ""; } };
+const parseTimeMin = (t) => { if (!t) return 0; const [h,m] = t.split(":").map(Number); return h * 60 + m; };
+const isWaterOnly = (m) => m && m.description === "💧 Вода";
+
+const getWeekKey = (dateStr) => {
+  const d = new Date(dateStr); const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1); return d.toISOString().slice(0, 10);
+};
+const getWeekRange = (weekStart) => {
+  const s = new Date(weekStart); const e = new Date(s); e.setDate(e.getDate() + 6);
+  return `${fmtDateShort(s.toISOString().slice(0,10))} – ${fmtDate(e.toISOString().slice(0,10))}`;
+};
+
+function suggestProducts(description) {
+  if (!description || description.length < 2) return [];
+  const desc = description.toLowerCase();
+  const results = new Set();
+  Object.entries(PRODUCT_KEYWORDS).forEach(([product, keywords]) => {
+    if (keywords.some(kw => desc.includes(kw))) results.add(product);
+  });
+  return [...results];
+}
+
+function calcIntervals(sortedDayMeals) {
+  const results = [];
+  for (let i = 0; i < sortedDayMeals.length; i++) {
+    if (i === 0) { results.push(null); continue; }
+    const prev = parseTimeMin(sortedDayMeals[i - 1].time);
+    const curr = parseTimeMin(sortedDayMeals[i].time);
+    const diffH = (curr - prev) / 60;
+    results.push(diffH > 0 ? diffH : null);
+  }
+  return results;
+}
+
+// ─── localStorage helpers ────────────────────────────────────────────────────
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : { meals: [], favs: [] };
+  } catch { return { meals: [], favs: [] }; }
+}
+function saveData(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+  catch (e) { console.error("Save error:", e); }
+}
+
+// ─── FullnessSlider ──────────────────────────────────────────────────────────
+function FullnessSlider({ value, onChange }) {
+  const ref = useRef(null);
+  const clr = value <= 4 ? "#fbbf24" : value <= 7 ? "#4ade80" : value <= 8 ? "#3b8ccc" : "#d94f4f";
+  const handleInteraction = useCallback((e) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const pct = Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
+    onChange(Math.max(1, Math.min(10, Math.round(pct * 10) || 1)));
+  }, [onChange]);
+  const startDrag = useCallback((e) => {
+    e.preventDefault(); handleInteraction(e);
+    const isTouch = !!e.touches;
+    const moveEvt = isTouch ? "touchmove" : "mousemove";
+    const endEvt = isTouch ? "touchend" : "mouseup";
+    const move = (ev) => { ev.preventDefault(); handleInteraction(ev); };
+    const up = () => { document.removeEventListener(moveEvt, move); document.removeEventListener(endEvt, up); };
+    document.addEventListener(moveEvt, move, { passive: false });
+    document.addEventListener(endEvt, up);
+  }, [handleInteraction]);
+  return (
+    <div style={{ padding: "8px 0" }}>
+      <div className="fullness-track" ref={ref} onMouseDown={startDrag} onTouchStart={startDrag}>
+        <div className="fullness-fill" style={{ width: `${value * 10}%`, background: clr }} />
+        <div className="fullness-thumb" style={{ left: `${value * 10}%`, borderColor: clr }} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 11, color: "var(--text3)" }}>
+        <span>1 — голодно</span><span style={{ fontWeight: 700, fontSize: 16, color: clr }}>{value}</span><span>10 — переел</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── MealCard ────────────────────────────────────────────────────────────────
+function MealCard({ meal, onEdit, onDelete, interval }) {
+  const [confirmDel, setConfirmDel] = useState(false);
+  const emo = EMOTIONS.find(e => e.value === meal.emotion);
+  const spd = SPEEDS.find(s => s.value === meal.speed);
+  return (
+    <div className="meal-card fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text2)" }}>{meal.time}</span>
+            {interval != null && (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
+                color: interval > 5 ? "var(--danger)" : "var(--text3)",
+                background: interval > 5 ? "var(--danger-light)" : "var(--bg)" }}>+{interval.toFixed(1)}ч</span>
+            )}
+            {emo && <span style={{ fontSize: 14 }}>{emo.emoji}</span>}
+            {spd && <span className="badge" style={{ background: spd.color + "22", color: spd.color, fontSize: 10 }}>{meal.speed}</span>}
+            {meal.fullness > 0 && (
+              <span className="badge" style={{ background: meal.fullness > 8 ? "var(--danger-light)" : "var(--bg)", color: meal.fullness > 8 ? "var(--danger)" : "var(--text2)", fontSize: 10 }}>сытость {meal.fullness}</span>
+            )}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4 }}>{meal.description}</div>
+          {meal.products?.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+              {meal.products.map(p => <span key={p} style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 6, background: "var(--accent-light)", color: "var(--accent-dark)" }}>{p}</span>)}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+            {meal.cookingMethod && <span style={{ fontSize: 11, color: "var(--text3)" }}>🍳 {meal.cookingMethod}</span>}
+            {meal.water > 0 && <span style={{ fontSize: 11, color: "#3b8ccc" }}>💧 {meal.water} мл</span>}
+            {meal.amount && <span style={{ fontSize: 11, color: "var(--text3)" }}>⚖️ {meal.amount} г</span>}
+            {meal.gadget && <span style={{ fontSize: 11, color: "var(--text3)" }}>📱 гаджет</span>}
+          </div>
+          {meal.comments && <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 4, fontStyle: "italic" }}>{meal.comments}</div>}
+        </div>
+        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+          {!isWaterOnly(meal) && <button className="btn btn-sm btn-outline" onClick={() => onEdit(meal)} style={{ padding: "4px 8px" }}>✏️</button>}
+          {confirmDel ? (
+            <div style={{ display: "flex", gap: 2 }}>
+              <button className="btn btn-sm btn-danger" onClick={() => { onDelete(meal.id); setConfirmDel(false); }} style={{ padding: "4px 6px", fontSize: 10 }}>Да</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setConfirmDel(false)} style={{ padding: "4px 6px", fontSize: 10 }}>Нет</button>
+            </div>
+          ) : (
+            <button className="btn btn-sm btn-danger" onClick={() => setConfirmDel(true)} style={{ padding: "4px 8px" }}>🗑</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ────────────────────────────────────────────────────────────────
+function FoodDiary() {
+  const [meals, setMeals] = useState([]);
+  const [favs, setFavs] = useState([]);
+  const [tab, setTab] = useState("add");
+  const [form, setForm] = useState(emptyForm());
+  const [formDate, setFormDate] = useState(getToday());
+  const [formTime, setFormTime] = useState(getNowTime());
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState(null);
+  const [historyExpanded, setHistoryExpanded] = useState({});
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const [showExport, setShowExport] = useState(false);
+  const [prodManual, setProdManual] = useState(false);
+
+  useEffect(() => {
+    const data = loadData();
+    setMeals(data.meals || []);
+    setFavs(data.favs || []);
+    setLoading(false);
+  }, []);
+
+  const persist = useCallback((m, f) => saveData({ meals: m, favs: f }), []);
+  const saveMeals = useCallback((newM) => { setMeals(newM); setFavs(p => { persist(newM, p); return p; }); }, [persist]);
+  const saveFavs = useCallback((newF) => { setFavs(newF); setMeals(p => { persist(p, newF); return p; }); }, [persist]);
+
+  const updateForm = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const toggleProduct = (p) => { setProdManual(true); setForm(f => ({ ...f, products: f.products.includes(p) ? f.products.filter(x => x !== p) : [...f.products, p] })); };
+
+  const handleDescChange = (desc) => {
+    setForm(f => ({ ...f, description: desc }));
+    if (!prodManual) { const s = suggestProducts(desc); if (s.length > 0) setForm(f => ({ ...f, products: s })); }
+  };
+
+  const currentSuggest = useMemo(() => suggestProducts(form.description), [form.description]);
+  const showHint = prodManual && currentSuggest.length > 0 && JSON.stringify([...currentSuggest].sort()) !== JSON.stringify([...form.products].sort());
+
+  const resetForm = () => { setForm(emptyForm()); setFormDate(getToday()); setFormTime(getNowTime()); setEditingId(null); setProdManual(false); };
+
+  const handleSubmit = () => {
+    if (!form.description.trim()) return;
+    const entry = { ...form, id: editingId || uid(), date: formDate, time: formTime, amount: form.amount ? Number(form.amount) : null, water: Number(form.water) || 0 };
+    if (editingId) { saveMeals(meals.map(m => m.id === editingId ? entry : m)); }
+    else { saveMeals([...meals, entry]); }
+    resetForm(); setTab("today");
+  };
+
+  const handleDelete = useCallback((id) => {
+    setMeals(prev => { const next = prev.filter(m => m.id !== id); setFavs(f => { persist(next, f); return f; }); return next; });
+  }, [persist]);
+
+  const handleEdit = (meal) => {
+    setEditingId(meal.id); setProdManual(true);
+    setForm({ description: meal.description, products: meal.products || [], cookingMethod: meal.cookingMethod || "", emotion: meal.emotion || "", gadget: meal.gadget || false, amount: meal.amount || "", speed: meal.speed || "", fullness: meal.fullness || 7, comments: meal.comments || "", water: meal.water || 0 });
+    setFormDate(meal.date); setFormTime(meal.time); setTab("add");
+  };
+
+  const addWater = (ml) => { saveMeals([...meals, { id: uid(), date: getToday(), time: getNowTime(), description: "💧 Вода", products: [], cookingMethod: "", emotion: "", gadget: false, amount: null, speed: "", fullness: 0, comments: "", water: ml }]); };
+
+  const addFav = () => {
+    if (!form.description.trim()) return;
+    if (favs.find(f => f.description === form.description.trim())) return;
+    saveFavs([...favs, { id: uid(), description: form.description.trim(), products: [...form.products], cookingMethod: form.cookingMethod }]);
+  };
+
+  const applyFav = (fav) => { setProdManual(true); setForm(f => ({ ...f, description: fav.description, products: [...(fav.products || [])], cookingMethod: fav.cookingMethod || "" })); setFormTime(getNowTime()); };
+  const removeFav = (id) => saveFavs(favs.filter(f => f.id !== id));
+
+  // ─── Computed ────────────────────────────────────────────────────────────
+  const todayStr = getToday();
+  const todayMeals = useMemo(() => meals.filter(m => m.date === todayStr).sort((a, b) => a.time.localeCompare(b.time)), [meals, todayStr]);
+  const todayWater = useMemo(() => todayMeals.reduce((s, m) => s + (m.water || 0), 0), [todayMeals]);
+  const todayFood = useMemo(() => todayMeals.filter(m => !isWaterOnly(m)), [todayMeals]);
+  const todayIntervals = useMemo(() => calcIntervals(todayFood), [todayFood]);
+
+  const mealsByDay = useMemo(() => {
+    const g = {}; meals.forEach(m => { (g[m.date] = g[m.date] || []).push(m); });
+    return Object.entries(g).sort(([a], [b]) => b.localeCompare(a)).map(([date, items]) => ({ date, meals: items.sort((a, b) => a.time.localeCompare(b.time)) }));
+  }, [meals]);
+
+  const weeks = useMemo(() => {
+    const w = {}; meals.forEach(m => { if (isWaterOnly(m)) return; const wk = getWeekKey(m.date); (w[wk] = w[wk] || []).push(m); });
+    return Object.entries(w).sort(([a], [b]) => b.localeCompare(a));
+  }, [meals]);
+
+  useEffect(() => { if (weeks.length > 0 && !selectedWeek) setSelectedWeek(weeks[0][0]); }, [weeks, selectedWeek]);
+
+  const analytics = useMemo(() => {
+    if (!selectedWeek) return null;
+    const entry = weeks.find(([k]) => k === selectedWeek);
+    if (!entry) return null;
+    const food = entry[1].filter(m => !isWaterOnly(m));
+    if (food.length === 0) return null;
+    const allInWeek = meals.filter(m => getWeekKey(m.date) === selectedWeek);
+    const total = food.length;
+    const byDay = {}; food.forEach(m => { (byDay[m.date] = byDay[m.date] || []).push(m); });
+    const intervals = [];
+    Object.values(byDay).forEach(dm => { calcIntervals([...dm].sort((a, b) => a.time.localeCompare(b.time))).forEach(v => { if (v != null) intervals.push(v); }); });
+    const avgInt = intervals.length ? intervals.reduce((s, v) => s + v, 0) / intervals.length : 0;
+    const longInt = intervals.filter(i => i > 5).length;
+    const fullness = food.map(m => m.fullness).filter(v => v && v > 0);
+    const avgFull = fullness.length ? fullness.reduce((s, v) => s + v, 0) / fullness.length : 0;
+    const overeat = fullness.filter(v => v > 8).length;
+    const stress = food.filter(m => m.emotion === "Негативная").length;
+    const fast = food.filter(m => m.speed === "Б").length;
+    const gadget = food.filter(m => m.gadget).length;
+    const wbd = {}; allInWeek.forEach(m => { wbd[m.date] = (wbd[m.date] || 0) + (m.water || 0); });
+    const wd = Object.values(wbd).filter(v => v > 0);
+    const avgW = wd.length ? wd.reduce((s, v) => s + v, 0) / wd.length / 1000 : 0;
+    const pf = {}; food.forEach(m => { const k = (m.products || []).sort().join(","); if (k) pf[k] = (pf[k] || 0) + 1; });
+    return { total, avgInt: avgInt.toFixed(1), longInt, avgFull: avgFull.toFixed(1), overeat, stress, stressPct: total ? (stress/total*100).toFixed(0) : 0, fast, fastPct: total ? (fast/total*100).toFixed(0) : 0, gadget, gadgetPct: total ? (gadget/total*100).toFixed(0) : 0, avgW: avgW.toFixed(2), days: Object.keys(byDay).length, pf: Object.entries(pf).sort(([,a],[,b]) => b - a) };
+  }, [selectedWeek, weeks, meals]);
+
+  // ─── Export ──────────────────────────────────────────────────────────────
+  const exportCSV = () => {
+    const food = meals.filter(m => !isWaterOnly(m)).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+    const byDay = {}; meals.forEach(m => { (byDay[m.date] = byDay[m.date] || []).push(m); });
+    const dailyWater = {}; Object.entries(byDay).forEach(([d, ms]) => { dailyWater[d] = ms.reduce((s, m) => s + (m.water || 0), 0); });
+    const intMap = {}; Object.entries(byDay).forEach(([, ms]) => { const sorted = ms.filter(m => !isWaterOnly(m)).sort((a, b) => a.time.localeCompare(b.time)); calcIntervals(sorted).forEach((v, i) => { intMap[sorted[i].id] = v; }); });
+    const waterPrinted = {};
+    const hdr = ["Дата","Время","Что","Продукты","Способ приготовления","Эмоция","Гаджет (да/нет)","Количество (грамм)","Скорость (Б/С/М)","Сытость (1-10)","Комментарии","Вода (мл)","Всего вода за день (л)","Перерыв между приёмами пищи (час)"];
+    const rows = food.map(m => {
+      const iv = intMap[m.id]; const showW = !waterPrinted[m.date]; if (showW) waterPrinted[m.date] = true;
+      return [fmtDate(m.date), m.time, `"${(m.description||"").replace(/"/g,'""')}"`, `"${(m.products||[]).join(",")}"`, m.cookingMethod||"", m.emotion||"", m.gadget?"Да":"Нет", m.amount||"", m.speed||"", m.fullness||"", `"${(m.comments||"").replace(/"/g,'""')}"`, m.water||0, showW?(dailyWater[m.date]/1000).toFixed(2):"", iv!=null?iv.toFixed(2):""];
+    });
+    const csv = "\uFEFF" + [hdr, ...rows].map(r => r.join(";")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url;
+    a.download = `дневник_питания_${getToday()}.csv`; a.click(); URL.revokeObjectURL(url); setShowExport(false);
+  };
+
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify({ meals, favorites: favs }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url;
+    a.download = `дневник_питания_${getToday()}.json`; a.click(); URL.revokeObjectURL(url); setShowExport(false);
+  };
+
+  if (loading) return (
+    <div className="diary-app" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
+      <div style={{ textAlign: "center", color: "var(--text3)" }}><div style={{ fontSize: 32, marginBottom: 8, opacity: .4 }}>🍴</div><div style={{ fontWeight: 700 }}>Загрузка дневника...</div></div>
+    </div>
+  );
+
+  return (
+    <div className="diary-app">
+      {/* Header */}
+      <div style={{ padding: "16px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>🥗 Дневник питания</div>
+          <div style={{ fontSize: 12, color: "var(--text3)", fontWeight: 600 }}>{new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</div>
+        </div>
+        <button className="btn btn-outline btn-sm" onClick={() => setShowExport(!showExport)}>📥 Экспорт</button>
+      </div>
+      {showExport && (
+        <div style={{ padding: "8px 16px 0" }}>
+          <div className="card fade-in" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={exportCSV}>📊 CSV для Excel</button>
+            <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={exportJSON}>📋 JSON (бэкап)</button>
+            <button className="btn btn-sm" onClick={() => setShowExport(false)} style={{ padding: 6 }}>✕</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: "12px 16px" }}>
+        {/* ═══ ADD ═══ */}
+        {tab === "add" && (
+          <div className="fade-in">
+            {favs.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <span className="label">⭐ Избранное — быстрый ввод</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {favs.map(f => (
+                    <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <span className="fav-chip" onClick={() => applyFav(f)} title={f.description}>{f.description}</span>
+                      <button onClick={() => removeFav(f.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text3)", fontSize: 14, padding: 2, lineHeight: 1 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <span style={{ fontSize: 16, fontWeight: 800 }}>{editingId ? "✏️ Редактирование" : "➕ Новый приём пищи"}</span>
+                {editingId && <button className="btn btn-sm btn-outline" onClick={resetForm}>Отмена</button>}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <div style={{ flex: 1 }}><label className="label">Дата</label><input className="input" type="date" value={formDate} onChange={e => setFormDate(e.target.value)} /></div>
+                <div style={{ flex: 1 }}><label className="label">Время</label><input className="input" type="time" value={formTime} onChange={e => setFormTime(e.target.value)} /></div>
+              </div>
+              <div style={{ marginBottom: 12 }}><label className="label">Что ели</label><textarea className="input" value={form.description} onChange={e => handleDescChange(e.target.value)} placeholder="Например: Омлет с сыром и овощами, зелень" rows={2} /></div>
+              <div style={{ marginBottom: 12 }}>
+                <label className="label">Категории продуктов</label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{PRODUCTS.map(p => <span key={p} className={`chip ${form.products.includes(p)?"active":""}`} onClick={() => toggleProduct(p)}>{p}</span>)}</div>
+                {showHint && <div className="suggest-hint" onClick={() => { setForm(f => ({ ...f, products: currentSuggest })); setProdManual(false); }}>💡 Подсказка: {currentSuggest.join(", ")} — нажмите чтобы применить</div>}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <div style={{ flex: 1 }}><label className="label">Готовка</label><select className="input" value={form.cookingMethod} onChange={e => updateForm("cookingMethod", e.target.value)}><option value="">—</option>{COOKING.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                <div style={{ flex: 1 }}>
+                  <label className="label">Настроение</label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {EMOTIONS.map(e => <button key={e.value} onClick={() => updateForm("emotion", e.value)} style={{ flex: 1, fontSize: 22, padding: "6px 0", borderRadius: 10, border: `2px solid ${form.emotion===e.value?e.color:"var(--border)"}`, background: form.emotion===e.value?e.color+"18":"transparent", cursor: "pointer", transition: "all .15s" }} title={e.value}>{e.emoji}</button>)}
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label className="label">Скорость еды</label>
+                <div style={{ display: "flex", gap: 6 }}>{SPEEDS.map(s => <button key={s.value} className={`chip ${form.speed===s.value?"active":""}`} onClick={() => updateForm("speed", s.value)} style={form.speed===s.value?{ borderColor: s.color, background: s.color+"18", color: s.color }:{}}>{s.label}</button>)}</div>
+              </div>
+              <div style={{ marginBottom: 12 }}><label className="label">Сытость после еды</label><FullnessSlider value={form.fullness} onChange={v => updateForm("fullness", v)} /></div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 100px" }}><label className="label">Грамм</label><input className="input" type="number" inputMode="numeric" value={form.amount} onChange={e => updateForm("amount", e.target.value)} placeholder="—" /></div>
+                <div style={{ flex: "1 1 100px" }}><label className="label">Вода, мл</label><input className="input" type="number" inputMode="numeric" value={form.water} onChange={e => updateForm("water", e.target.value)} placeholder="0" /></div>
+                <div style={{ flex: "1 1 80px" }}><label className="label">Гаджет</label><button className={`chip ${form.gadget?"active":""}`} style={{ width: "100%", justifyContent: "center" }} onClick={() => updateForm("gadget", !form.gadget)}>📱 {form.gadget?"Да":"Нет"}</button></div>
+              </div>
+              <div style={{ marginBottom: 16 }}><label className="label">Комментарий</label><input className="input" value={form.comments} onChange={e => updateForm("comments", e.target.value)} placeholder="Необязательно" /></div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSubmit} disabled={!form.description.trim()}>{editingId ? "💾 Сохранить" : "✅ Записать"}</button>
+                {!editingId && form.description.trim() && <button className="btn btn-outline" onClick={addFav} title="В избранное">⭐</button>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ TODAY ═══ */}
+        {tab === "today" && (
+          <div className="fade-in">
+            <div className="card">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#3b8ccc", textTransform: "uppercase", letterSpacing: .5 }}>💧 Вода сегодня</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: todayWater >= 1500 ? "#4ade80" : todayWater >= 800 ? "#fbbf24" : "#d94f4f" }}>
+                    {(todayWater / 1000).toFixed(1)} <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text3)" }}>л</span>
+                  </div>
+                </div>
+              </div>
+              <div className="water-grid">{WATER_AMOUNTS.map(ml => <button key={ml} className="water-btn" onClick={() => addWater(ml)}>+{ml}</button>)}</div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "12px 0 8px" }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>Приёмы пищи: {todayFood.length}</span>
+              {todayFood.length >= 2 && (() => {
+                const valid = todayIntervals.filter(v => v != null);
+                if (!valid.length) return null;
+                const avg = valid.reduce((s, v) => s + v, 0) / valid.length;
+                return <span style={{ fontSize: 12, color: avg > 5 ? "var(--danger)" : "var(--text3)" }}>ср. интервал {avg.toFixed(1)} ч</span>;
+              })()}
+            </div>
+            {todayFood.length === 0 ? (
+              <div className="empty-state"><div style={{ fontSize: 32, opacity: .4 }}>🍴</div><div>Записей пока нет</div><div style={{ fontSize: 12, marginTop: 4 }}>Нажмите ➕ чтобы добавить</div></div>
+            ) : (
+              <div className="card" style={{ padding: 8 }}>{todayFood.map((m, i) => <MealCard key={m.id} meal={m} onEdit={handleEdit} onDelete={handleDelete} interval={todayIntervals[i]} />)}</div>
+            )}
+          </div>
+        )}
+
+        {/* ═══ HISTORY ═══ */}
+        {tab === "history" && (
+          <div className="fade-in">
+            {mealsByDay.length === 0 ? (
+              <div className="empty-state"><div style={{ fontSize: 32, opacity: .4 }}>📅</div><div>История пуста</div></div>
+            ) : mealsByDay.map(({ date, meals: dm }) => {
+              const food = dm.filter(m => !isWaterOnly(m));
+              const dayW = dm.reduce((s, m) => s + (m.water || 0), 0);
+              const dayInt = calcIntervals(food);
+              const exp = historyExpanded[date] ?? date === todayStr;
+              return (
+                <div key={date} className="card" style={{ padding: "10px 14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setHistoryExpanded(h => ({ ...h, [date]: !exp }))}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 14, fontWeight: 800 }}>{fmtDate(date)}</span>
+                      <span style={{ fontSize: 11, color: "var(--text3)", fontWeight: 600 }}>{dayName(date)}</span>
+                      <span className="badge" style={{ background: "var(--accent-light)", color: "var(--accent-dark)", fontSize: 11 }}>{food.length} пр.</span>
+                      <span style={{ fontSize: 11, color: "#3b8ccc" }}>💧 {(dayW / 1000).toFixed(1)}л</span>
+                    </div>
+                    <span style={{ color: "var(--text3)" }}>{exp ? "▲" : "▼"}</span>
+                  </div>
+                  {exp && <div style={{ marginTop: 8 }}>{food.map((m, i) => <MealCard key={m.id} meal={m} onEdit={handleEdit} onDelete={handleDelete} interval={dayInt[i]} />)}</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ═══ ANALYTICS ═══ */}
+        {tab === "analytics" && (
+          <div className="fade-in">
+            {weeks.length === 0 ? (
+              <div className="empty-state"><div style={{ fontSize: 32, opacity: .4 }}>📊</div><div>Недостаточно данных</div><div style={{ fontSize: 12, marginTop: 4 }}>Добавьте записи чтобы увидеть аналитику</div></div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 12 }}>
+                  <span className="label">Выберите неделю</span>
+                  <div className="week-select">{weeks.map(([wk]) => <span key={wk} className={`week-chip ${selectedWeek===wk?"active":""}`} onClick={() => setSelectedWeek(wk)}>{getWeekRange(wk)}</span>)}</div>
+                </div>
+                {analytics && (
+                  <div className="card">
+                    <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 12 }}>📊 Аналитика за неделю</div>
+                    {[["Приёмов пищи", analytics.total, {}], ["Дней с записями", analytics.days, {}], ["Средний интервал", `${analytics.avgInt} ч`, { color: Number(analytics.avgInt) > 5 ? "var(--danger)" : "var(--accent)" }], ["Интервалы > 5 ч", analytics.longInt, { color: analytics.longInt > 0 ? "var(--warn)" : "var(--accent)" }], ["Средняя сытость", analytics.avgFull, {}], ["Переедание (>8)", analytics.overeat, { color: analytics.overeat > 0 ? "var(--danger)" : "var(--accent)" }]].map(([label, val, style]) => (
+                      <div className="stat-row" key={label}><span style={{ fontSize: 13 }}>{label}</span><span style={{ fontWeight: 800, fontSize: 16, ...style }}>{val}</span></div>
+                    ))}
+                    {[["Стресс при еде", analytics.stress, analytics.stressPct, analytics.stress > 0 ? "var(--danger)" : "var(--accent)"], ["Быстрая еда", analytics.fast, analytics.fastPct, analytics.fast > 0 ? "var(--warn)" : "var(--accent)"], ["С гаджетами", analytics.gadget, analytics.gadgetPct, analytics.gadget > 0 ? "var(--warn)" : "var(--accent)"]].map(([label, val, pct, clr]) => (
+                      <div className="stat-row" key={label}><span style={{ fontSize: 13 }}>{label}</span><span style={{ fontWeight: 700, fontSize: 14 }}><span style={{ color: clr }}>{val}</span><span style={{ color: "var(--text3)", fontSize: 12, marginLeft: 4 }}>({pct}%)</span></span></div>
+                    ))}
+                    <div className="stat-row"><span style={{ fontSize: 13 }}>Среднее воды в день</span><span style={{ fontWeight: 800, fontSize: 16, color: Number(analytics.avgW) >= 1.5 ? "var(--accent)" : "var(--warn)" }}>{analytics.avgW} л</span></div>
+                    {analytics.pf.length > 0 && (
+                      <div style={{ marginTop: 16 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "var(--text2)" }}>Частота категорий продуктов</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{analytics.pf.map(([combo, count]) => <span key={combo} className="tag-freq">{combo.replace(/,/g, " + ")} <span style={{ fontWeight: 800 }}>×{count}</span></span>)}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="nav">
+        {[{ key: "add", icon: "➕", label: "Добавить" }, { key: "today", icon: "💧", label: "Сегодня" }, { key: "history", icon: "📅", label: "История" }, { key: "analytics", icon: "📊", label: "Аналитика" }].map(({ key, icon, label }) => (
+          <div key={key} className={`nav-item ${tab===key?"active":""}`} onClick={() => setTab(key)}><span className="nav-icon">{icon}</span>{label}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<FoodDiary />);
+</script>
+</body>
+</html>
