@@ -359,11 +359,81 @@ function FoodDiary() {
     const intMap = {}; Object.entries(byDay).forEach(([, ms]) => { const sorted = ms.filter(m => !isWaterOnly(m)).sort((a, b) => a.time.localeCompare(b.time)); calcIntervals(sorted).forEach((v, i) => { intMap[sorted[i].id] = v; }); });
     const waterPrinted = {};
     const hdr = ["Дата","Время","Что","Продукты","Способ приготовления","Эмоция","Гаджет (да/нет)","Количество (грамм)","Скорость (Б/С/М)","Сытость (1-10)","Комментарии","Вода (мл)","Всего вода за день (л)","Перерыв между приёмами пищи (час)"];
-    const rows = food.map(m => {
+    const dataRows = food.map(m => {
       const iv = intMap[m.id]; const showW = !waterPrinted[m.date]; if (showW) waterPrinted[m.date] = true;
       return [fmtDate(m.date), m.time, `"${(m.description||"").replace(/"/g,'""')}"`, `"${(m.products||[]).join(",")}"`, m.cookingMethod||"", m.emotion||"", m.gadget?"Да":"Нет", m.amount||"", m.speed||"", m.fullness||"", `"${(m.comments||"").replace(/"/g,'""')}"`, m.water||0, showW?(dailyWater[m.date]/1000).toFixed(2):"", iv!=null?iv.toFixed(2):""];
     });
-    const csv = "\uFEFF" + [hdr, ...rows].map(r => r.join(";")).join("\n");
+
+    // ── Analytics per week ──────────────────────────────────────────────
+    const wks = {};
+    food.forEach(m => { const wk = getWeekKey(m.date); (wks[wk] = wks[wk] || []).push(m); });
+    const weekKeys = Object.keys(wks).sort();
+
+    const analyticsRows = [];
+    weekKeys.forEach(wk => {
+      const wkFood = wks[wk];
+      const allInWk = meals.filter(m => getWeekKey(m.date) === wk);
+      const total = wkFood.length;
+
+      // Intervals
+      const wkByDay = {};
+      wkFood.forEach(m => { (wkByDay[m.date] = wkByDay[m.date] || []).push(m); });
+      const intervals = [];
+      Object.values(wkByDay).forEach(dm => {
+        calcIntervals([...dm].sort((a, b) => a.time.localeCompare(b.time))).forEach(v => { if (v != null) intervals.push(v); });
+      });
+      const avgInt = intervals.length ? (intervals.reduce((s, v) => s + v, 0) / intervals.length) : 0;
+      const longInt = intervals.filter(i => i > 5).length;
+
+      // Fullness
+      const fullVals = wkFood.map(m => m.fullness).filter(v => v && v > 0);
+      const avgFull = fullVals.length ? (fullVals.reduce((s, v) => s + v, 0) / fullVals.length) : 0;
+      const overeat = fullVals.filter(v => v > 8).length;
+
+      // Emotions, speed, gadgets
+      const stress = wkFood.filter(m => m.emotion === "Негативная").length;
+      const fast = wkFood.filter(m => m.speed === "Б").length;
+      const gadget = wkFood.filter(m => m.gadget).length;
+
+      // Water
+      const wbd = {};
+      allInWk.forEach(m => { wbd[m.date] = (wbd[m.date] || 0) + (m.water || 0); });
+      const wd = Object.values(wbd).filter(v => v > 0);
+      const avgW = wd.length ? (wd.reduce((s, v) => s + v, 0) / wd.length / 1000) : 0;
+
+      // Product frequency
+      const pf = {};
+      wkFood.forEach(m => { const k = (m.products || []).sort().join(", "); if (k) pf[k] = (pf[k] || 0) + 1; });
+      const pfSorted = Object.entries(pf).sort(([,a],[,b]) => b - a);
+
+      const daysCount = Object.keys(wkByDay).length;
+      const pct = (v) => total ? (v / total * 100).toFixed(0) + "%" : "0%";
+      const E = new Array(hdr.length).fill("");
+
+      analyticsRows.push(E); // blank separator
+      const titleRow = [...E]; titleRow[0] = `Анализ дневника питания (${getWeekRange(wk)})`; analyticsRows.push(titleRow);
+      const r = (label, val) => { const row = [...E]; row[0] = label; row[1] = val; analyticsRows.push(row); };
+
+      r("Общее количество приёмов пищи", total);
+      r("Дней с записями", daysCount);
+      r("Средний интервал между приёмами пищи (час)", avgInt.toFixed(1));
+      r("Интервалы более 5 часов", longInt);
+      r("Средняя сытость после еды", avgFull.toFixed(1));
+      r("Эпизоды переедания (сытость > 8)", overeat);
+      r("Приёмы со стрессом (негативная эмоция)", `${stress} (${pct(stress)})`);
+      r("Быстрая еда (Б)", `${fast} (${pct(fast)})`);
+      r("Отвлекающие факторы — гаджеты", `${gadget} (${pct(gadget)})`);
+      r("Среднее кол-во воды в день (л)", avgW.toFixed(2));
+
+      if (pfSorted.length > 0) {
+        const pfTitle = [...E]; pfTitle[0] = ""; analyticsRows.push(pfTitle);
+        const pfHdr = [...E]; pfHdr[0] = "Категории продуктов"; pfHdr[1] = "Частота"; analyticsRows.push(pfHdr);
+        pfSorted.forEach(([combo, count]) => { r(combo, count); });
+      }
+    });
+
+    const allRows = [hdr, ...dataRows, ...analyticsRows];
+    const csv = "\uFEFF" + allRows.map(r => r.join(";")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url;
     a.download = `дневник_питания_${getToday()}.csv`; a.click(); URL.revokeObjectURL(url); setShowExport(false);
